@@ -222,9 +222,11 @@ def draw_score():
     score_text = font.render("Score: " + str(score), True, (255, 255, 255))
     win.blit(score_text, (10, 10))  # Vẽ điểm số lên góc trên bên trái của cửa sổ game
 
+def draw_game_over():
+    over_text = font.render("Game Over! Click to Retry or Quit", True, (255, 0, 0))
+    win.blit(over_text, (xWin // 2 - over_text.get_width() // 2, yWin // 2 - over_text.get_height() // 2))
 
 def collision_handler(knf, frt):
-
     # Tạo hai đối tượng trái cây mới đại diện cho hai nửa trái cây sau khi bị cắt
     top_fruit = frt.copy()
     bot_fruit = frt.copy()
@@ -314,28 +316,65 @@ def clip_line(x1, y1, x2, y2, xmin, ymin, xmax, ymax):
 
 
 def knife_fruit_collision(knf, frt):
+    # Khung giới hạn của cửa sổ game
     xmin, ymin = 0, 0
     xmax, ymax = xWin, yWin
 
+    # Tọa độ của dao
     x1, y1 = knf.rect.topleft
     x2, y2 = knf.rect.bottomright
+
+    # Tọa độ của trái cây
     x3, y3 = frt.rect.topleft
     x4, y4 = frt.rect.bottomright
 
+    # Cắt đoạn thẳng dao với khung hình chữ nhật
     result = clip_line(x1, y1, x2, y2, xmin, ymin, xmax, ymax)
     if result:
         x1, y1, x2, y2 = result
     else:
         return False
 
+    # Cắt đoạn thẳng trái cây với khung hình chữ nhật
     result = clip_line(x3, y3, x4, y4, xmin, ymin, xmax, ymax)
     if result:
         x3, y3, x4, y4 = result
     else:
         return False
 
+    # Kiểm tra va chạm
     return not (x2 < x3 or x4 < x1 or y2 < y3 or y4 < y1)
 
+def game_over():
+    win.fill((0, 0, 0))  # Xóa màn hình với màu đen
+    font_large = pygame.font.SysFont(None, 48)
+    game_over_text = font_large.render("Game Over", True, (255, 0, 0))
+    win.blit(game_over_text, (xWin // 2 - game_over_text.get_width() // 2, yWin // 2 - game_over_text.get_height() // 2))
+
+    # Tạo các nút "Retry" và "Quit"
+    retry_text = font.render("Retry", True, (255, 255, 255))
+    
+    text_rect = retry_text.get_rect(center=(xWin // 2, yWin // 2 + 50))
+    win.blit(retry_text, text_rect)
+
+    quit_text = font.render("Quit", True, (255, 255, 255))
+    quit_text_rect = quit_text.get_rect(center=(xWin // 2, yWin // 2 + 100))
+    win.blit(quit_text, quit_text_rect)
+
+    pygame.display.update()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = pygame.mouse.get_pos()
+                if text_rect.collidepoint(mouse_pos):  # Kiểm tra nếu người chơi bấm vào nút Retry
+                    game_loop()
+                elif quit_text_rect.collidepoint(mouse_pos):  # Kiểm tra nếu người chơi bấm vào nút Quit
+                    pygame.quit()
+                    sys.exit()
 
 def game_loop():
     pygame.init()  # Khởi tạo các mô-đun của Pygame
@@ -347,6 +386,8 @@ def game_loop():
     fruits = []
 
     global score  # Đảm bảo sử dụng biến toàn cục 'score'
+    score = 0  # Reset score at the start of the game
+    fallen_fruits = 0
 
     while True:
         num_fruits = random.randint(0, 3)
@@ -380,12 +421,16 @@ def game_loop():
 
                 if fr.destroy == True:
                     fruits.remove(fr)  # Loại bỏ trái cây nếu đã bị phá hủy
+                    fallen_fruits += 1  # Tăng số lượng trái cây đã rơi
 
-            draw_score()  # Vẽ điểm số ở mỗi khung hình
-            pygame.display.flip()  # Cập nhật màn hình
+                if fallen_fruits > 3:
+                    run = False
+                    break
 
-        if not run:
-            break
+            draw_score()  # Vẽ điểm số lên cửa sổ game
+            pygame.display.update()  # Cập nhật cửa sổ game
 
+        if fallen_fruits > 3:
+            game_over()
 
 game_loop()
