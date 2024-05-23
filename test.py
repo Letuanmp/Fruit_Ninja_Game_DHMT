@@ -7,7 +7,7 @@ import sys
 xWin = 600
 yWin = 600
 img_path = 'images/'
-fps = 16
+fps = 10
 win_size = (xWin, yWin)
 
 # Khởi tạo cửa sổ game
@@ -27,7 +27,8 @@ fruit_list = {
     1: 'banana',
     2: 'peach',
     3: 'basaha',
-    4: 'apple'
+    4: 'apple',
+    5: 'boom'
 }
 
 # Kích thước tối đa của đuôi dao
@@ -89,7 +90,7 @@ class knife:
             else:
                 self.angle = 0
 
-    def update_rect(self):
+    def update_react(self):
         self.rect.top = self.pos[1]
         self.rect.bottom = self.pos[1] + self.height
         self.rect.left = self.pos[0]
@@ -97,7 +98,7 @@ class knife:
 
     def update(self):
         self.pos = pygame.mouse.get_pos()
-        self.update_rect()
+        self.update_react()
 
         if self.tail_size < max_tail_size:
             self.tail.append(self.pos)
@@ -124,7 +125,7 @@ class fruit:
 
         self.cut = cut
         self.pos = [random.randint(self.width, xWin - self.width), yWin + (self.height + 1) // 2]
-        self.update_rect()
+        self.update_react()
 
         self.win = win
         self.destroy = False
@@ -171,7 +172,7 @@ class fruit:
     def rotate(self, angle):
         self.angle = angle
 
-    def update_rect(self):
+    def update_react(self):
         self.rect.top = self.pos[1]
         self.rect.bottom = self.pos[1] + self.height
         self.rect.left = self.pos[0]
@@ -191,20 +192,19 @@ class fruit:
             self.time += self.time_step
             self.pos[0] = self.spos[0] + self.svelx * (self.time)
             self.pos[1] = self.spos[1] + self.svely * (self.time) + (gravity * (self.time ** 2))
-
         else:
             self.destroy = True
 
     def update(self):
         self.angle = (self.angle + self.angle_speed) % 360
         self.physic()
-        self.update_rect()
+        self.update_react()
         self.draw()
 
     def copy(self):
         newfr = fruit(self.name, self.win, self.cut)
         newfr.pos = self.pos
-        newfr.update_rect()
+        newfr.update_react()
 
         newfr.time = self.time
         newfr.time_step = self.time_step
@@ -222,6 +222,10 @@ def draw_score():
     score_text = font.render("Score: " + str(score), True, (255, 255, 255))
     win.blit(score_text, (10, 10))  # Vẽ điểm số lên góc trên bên trái của cửa sổ game
 
+def draw_miss(fallen_fruits):
+    score_text = font.render("X: " + str(fallen_fruits), True, (255, 0, 0))
+    win.blit(score_text, (500, 10))  # Vẽ điểm số lên góc trên bên trái của cửa sổ game
+
 def draw_game_over():
     over_text = font.render("Game Over! Click to Retry or Quit", True, (255, 0, 0))
     win.blit(over_text, (xWin // 2 - over_text.get_width() // 2, yWin // 2 - over_text.get_height() // 2))
@@ -230,6 +234,8 @@ def collision_handler(knf, frt):
     # Tạo hai đối tượng trái cây mới đại diện cho hai nửa trái cây sau khi bị cắt
     top_fruit = frt.copy()
     bot_fruit = frt.copy()
+
+    print(frt)
 
     # Cập nhật thuộc tính cho nửa trên của trái cây
     top_fruit.cut = True
@@ -278,6 +284,7 @@ def clip_line(x1, y1, x2, y2, xmin, ymin, xmax, ymax):
 
     code1 = compute_region_code(x1, y1)
     code2 = compute_region_code(x2, y2)
+    print(code1, code2)
 
     if code1 == 0 and code2 == 0:
         return x1, y1, x2, y2
@@ -330,6 +337,7 @@ def knife_fruit_collision(knf, frt):
 
     # Cắt đoạn thẳng dao với khung hình chữ nhật
     result = clip_line(x1, y1, x2, y2, xmin, ymin, xmax, ymax)
+    print(result)
     if result:
         x1, y1, x2, y2 = result
     else:
@@ -390,9 +398,9 @@ def game_loop():
     fallen_fruits = 0
 
     while True:
-        num_fruits = random.randint(0, 3)
+        num_fruits = random.randint(0, 4)
         for i in range(num_fruits + 1):
-            option = random.randint(0, 4)
+            option = random.randint(0, 5)
             fruits.append(fruit(fruit_list[option], win))  # Tạo các đối tượng trái cây ngẫu nhiên
 
         while fruits != [] and run:
@@ -402,7 +410,6 @@ def game_loop():
                     run = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     knf.enable_cutting()  # Kích hoạt chế độ cắt khi nhấn chuột
-
                 elif event.type == pygame.MOUSEBUTTONUP:
                     knf.disable_cutting()  # Vô hiệu hóa chế độ cắt khi nhả chuột
 
@@ -420,17 +427,18 @@ def game_loop():
                         knf.cut()  # Vẽ vết cắt
 
                 if fr.destroy == True:
+                    if not fr.cut == True:
+                        fallen_fruits += 1  # Tăng số lượng trái cây đã rơi
                     fruits.remove(fr)  # Loại bỏ trái cây nếu đã bị phá hủy
-                    fallen_fruits += 1  # Tăng số lượng trái cây đã rơi
 
-                if fallen_fruits > 3:
-                    run = False
+                if fallen_fruits >= 3:
+                    game_over()
                     break
-
+                
+                if run == False:
+                    pygame.quit()
+            
             draw_score()  # Vẽ điểm số lên cửa sổ game
+            draw_miss(fallen_fruits)
             pygame.display.update()  # Cập nhật cửa sổ game
-
-        if fallen_fruits > 3:
-            game_over()
-
 game_loop()
