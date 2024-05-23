@@ -7,7 +7,7 @@ import sys
 xWin = 600
 yWin = 600
 img_path = 'images/'
-fps = 10
+fps = 16
 win_size = (xWin, yWin)
 
 # Khởi tạo cửa sổ game
@@ -420,6 +420,10 @@ def game_loop():
                 fr.update()  # Cập nhật trạng thái và vẽ trái cây
                 if pygame.sprite.collide_rect(knf, fr) == True and knf.sharp() and not fr.cut:
                     if knife_fruit_collision(knf, fr):
+                        if fr.name == 'boom':  # Kiểm tra nếu trái cây là banana
+                            game_over()
+                            run = False
+                            break
                         top, bot = collision_handler(knf, fr)  # Xử lý va chạm, tạo hai nửa trái cây
                         fruits.append(top)
                         fruits.append(bot)
